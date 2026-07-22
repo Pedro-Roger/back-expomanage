@@ -1,0 +1,22 @@
+{
+  "name": "back-expomanage",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "workspaces": [
+    "apps/api",
+    "packages/*"
+  ],
+  "scripts": {
+    "test": "npm test --workspace @expomanage/api",
+    "build": "npm run build --workspace @expomanage/api",
+    "dev": "npm run dev --workspace @expomanage/api",
+    "seed": "npm run seed --workspace @expomanage/api"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-react": "^4.3.4",
+    "typescript": "^5.7.3",
+    "vite": "^6.0.7",
+    "vitest": "^2.1.8"
+  }
+}

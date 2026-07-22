@@ -1,0 +1,43 @@
+{
+  "name": "@expomanage/api",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "main": "dist/main.js",
+  "types": "dist/main.d.ts",
+  "scripts": {
+    "pretest": "npm run build --workspace @expomanage/shared",
+    "test": "vitest run",
+    "prebuild": "npm run build --workspace @expomanage/shared",
+    "build": "tsc -p tsconfig.json",
+    "dev": "tsx watch src/main.ts",
+    "prisma:generate": "prisma generate --schema prisma/schema.prisma",
+    "seed": "npm run prisma:generate && prisma db seed --schema prisma/schema.prisma",
+    "import:cnpj": "tsx src/import-cnpj-open-data.ts",
+    "sync:cnpj": "tsx src/sync-receita-cnpj.ts"
+  },
+  "prisma": {
+    "seed": "tsx prisma/seed.ts"
+  },
+  "dependencies": {
+    "@aws-sdk/client-s3": "^3.1090.0",
+    "@expomanage/shared": "0.1.0",
+    "@nestjs/common": "^11.0.0",
+    "@nestjs/core": "^11.0.0",
+    "@nestjs/jwt": "^11.0.0",
+    "@nestjs/mongoose": "^11.0.0",
+    "@nestjs/platform-express": "^11.0.0",
+    "@prisma/client": "^6.16.3",
+    "jszip": "^3.10.1",
+    "mongoose": "^8.9.5",
+    "prisma": "^6.16.3",
+    "reflect-metadata": "^0.2.2",
+    "rxjs": "^7.8.1",
+    "supertest": "^7.0.0"
+  },
+  "devDependencies": {
+    "@nestjs/testing": "^11.0.0",
+    "@types/supertest": "^6.0.2",
+    "tsx": "^4.19.2"
+  }
+}

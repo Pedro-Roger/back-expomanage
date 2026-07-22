@@ -1,0 +1,51 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mongodb"
+  url      = env("DATABASE_URL")
+}
+
+model AdminUser {
+  id           String   @id @default(auto()) @map("_id") @db.ObjectId
+  email        String   @unique
+  name         String
+  passwordHash String
+  role         String   @default("admin")
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+model Event {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  slug      String   @unique
+  name      String
+  year      Int
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Stand {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  code      String   @unique
+  eventSlug String
+  size      String
+  type      String
+  price     Float
+  status    String   @default("available")
+  width     Float?
+  length    Float?
+  area      Float?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model PaymentConfig {
+  id           String   @id @default(auto()) @map("_id") @db.ObjectId
+  eventSlug    String   @unique
+  pixCopyPaste String
+  installments Json
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
