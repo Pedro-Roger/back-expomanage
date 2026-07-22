@@ -29,11 +29,3 @@ npm run dev
 ## API Atual
 
 A API já está organizada em módulos/controllers/services NestJS. Nesta etapa, ela usa dados em memória para acelerar validação local. A troca para MongoDB/Mongoose fica concentrada no repositório e não muda os contratos usados pelo front-end.
-
-Login local de desenvolvimento:
-
-```text
-admin@expomanage.local
-admin123
-```
-
