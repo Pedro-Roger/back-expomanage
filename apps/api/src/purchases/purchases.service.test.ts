@@ -1,3 +1,4 @@
+import { NotFoundException } from "@nestjs/common";
 import { describe, expect, it } from "vitest";
 import { InMemoryExpoRepository } from "../repository.js";
 import { extractS3KeyFromContractUrl, PurchasesService } from "./purchases.service.js";
@@ -19,6 +20,39 @@ class FakeReceiptStorage {
 }
 
 describe("PurchasesService", () => {
+  it("copies the selected stand batch installments into the purchase", async () => {
+    const repository = new InMemoryExpoRepository();
+    await repository.replaceEventStands("festival-2026", [
+      {
+        id: "stand-festival-n-01",
+        eventSlug: "festival-2026",
+        code: "N-01",
+        size: "3x3",
+        status: "reserved",
+        batchId: "negocios",
+        price: 4200,
+        installments: [
+          { label: "Entrada", amount: 1200, dueLabel: "Imediato" },
+          { label: "Saldo", amount: 3000, dueLabel: "Agosto/2026" }
+        ]
+      }
+    ]);
+    const service = new PurchasesService(repository, new FakeReceiptStorage());
+
+    const profile = await service.createFromSignedContract({
+      eventSlug: "festival-2026",
+      clientName: "Maria Silva",
+      clientEmail: "maria@example.com",
+      standId: "stand-festival-n-01",
+      contractUrl: "s3://contracts/n-01.docx"
+    });
+
+    expect(profile.installments.map(({ label, amount }) => ({ label, amount }))).toEqual([
+      { label: "Entrada", amount: 1200 },
+      { label: "Saldo", amount: 3000 }
+    ]);
+  });
+
   it("creates a client profile with installments, receives receipts, and lets admin confirm payment", async () => {
     const service = new PurchasesService(new InMemoryExpoRepository(), new FakeReceiptStorage());
 
@@ -130,5 +164,26 @@ describe("PurchasesService", () => {
     expect(
       extractS3KeyFromContractUrl("https://lc-web-quero.s3.us-east-2.amazonaws.com/contracts/contract-C-02.docx")
     ).toBe("contracts/contract-C-02.docx");
+  });
+
+  it("returns a clear not-found response when a legacy contract file does not exist", async () => {
+    const repository = new InMemoryExpoRepository();
+    const storage = new FakeReceiptStorage();
+    storage.downloadObject = async () => {
+      const error = new Error("The specified key does not exist.");
+      error.name = "NoSuchKey";
+      throw error;
+    };
+    const service = new PurchasesService(repository, storage);
+    const profile = await service.createFromSignedContract({
+      clientName: "Maria Silva",
+      clientEmail: "maria@example.com",
+      standId: "stand-c-02",
+      contractUrl: "https://example.com/contracts/contract-C-02.docx"
+    });
+
+    await expect(service.downloadContract(profile.id)).rejects.toEqual(
+      new NotFoundException("Arquivo do contrato não encontrado. Assine o contrato novamente para gerar uma nova via.")
+    );
   });
 });

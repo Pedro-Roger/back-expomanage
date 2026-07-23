@@ -4,6 +4,12 @@ export type DocumentType = "cpf" | "cnpj";
 export type PersonType = "individual" | "company";
 export type PaymentInstallmentStatus = "waiting_receipt" | "under_review" | "paid";
 
+export interface InstallmentPlanItem {
+  label: string;
+  amount: number;
+  dueLabel: string;
+}
+
 export interface Stand {
   id: string;
   eventSlug?: string;
@@ -16,6 +22,8 @@ export interface Stand {
   status: StandStatus;
   exhibitor?: string;
   type?: string;
+  batchId?: string;
+  installments?: InstallmentPlanItem[];
 }
 
 export interface ExpoEvent {
@@ -27,11 +35,13 @@ export interface ExpoEvent {
 }
 
 export interface EventStandBatch {
+  id?: string;
   quantity: number;
   size: string;
   type: string;
   prefix?: string;
   price?: number;
+  installments?: InstallmentPlanItem[];
 }
 
 export interface Lead {
@@ -121,11 +131,7 @@ export interface PaymentInstallment {
 export interface EventPaymentConfig {
   eventSlug: string;
   pixCopyPaste: string;
-  installments: Array<{
-    label: string;
-    amount: number;
-    dueLabel: string;
-  }>;
+  installments: InstallmentPlanItem[];
 }
 
 export interface ClientPurchaseProfile {
@@ -146,7 +152,7 @@ export interface PurchaseProfileInput {
   clientName: string;
   clientEmail: string;
   clientDocument?: string;
-  stand: Pick<Stand, "id" | "code" | "size" | "status">;
+  stand: Pick<Stand, "id" | "code" | "size" | "status" | "installments">;
   contractUrl: string;
   pixCopyPaste?: string;
 }
@@ -170,8 +176,24 @@ export const paymentInstallmentStatusLabels: Record<PaymentInstallmentStatus, st
 };
 
 export const defaultEventStandBatches: EventStandBatch[] = [
-  { quantity: 80, size: "3x3", type: "Feira de Negócios", prefix: "N" },
-  { quantity: 10, size: "Barraca", type: "Feira Gastronômica", prefix: "G" }
+  {
+    id: "negocios",
+    quantity: 80,
+    size: "3x3",
+    type: "Feira de Negócios",
+    prefix: "N",
+    price: 3500,
+    installments: defaultPaymentInstallments()
+  },
+  {
+    id: "gastronomia",
+    quantity: 10,
+    size: "Barraca",
+    type: "Feira Gastronômica",
+    prefix: "G",
+    price: 3500,
+    installments: defaultPaymentInstallments()
+  }
 ];
 
 export const defaultExpoEvent: ExpoEvent = {
@@ -372,7 +394,8 @@ export function buildDashboardStats(stands: Stand[], leads: Lead[]): DashboardSt
 
 export function buildPurchaseProfile(input: PurchaseProfileInput): ClientPurchaseProfile {
   const eventPrefix = input.eventSlug ? `${input.eventSlug}-` : "";
-  const installments: PaymentInstallment[] = defaultPaymentInstallments().map((installment, index) => ({
+  const plan = input.stand.installments?.length ? input.stand.installments : defaultPaymentInstallments();
+  const installments: PaymentInstallment[] = plan.map((installment, index) => ({
     id: `installment-${index + 1}`,
     ...installment,
     status: "waiting_receipt"
@@ -400,6 +423,7 @@ export function generateStandsFromBatches(batches: EventStandBatch[], eventSlug?
   return batches.flatMap((batch, batchIndex) => {
     const quantity = Math.max(0, Math.floor(Number(batch.quantity) || 0));
     const prefix = (batch.prefix?.trim() || String.fromCharCode(65 + batchIndex)).toUpperCase();
+    const batchId = batch.id?.trim() || `${prefix.toLowerCase()}-${batchIndex + 1}`;
     const padding = Math.max(2, String(quantity).length);
     const dimensions = parseStandSize(batch.size);
 
@@ -416,9 +440,11 @@ export function generateStandsFromBatches(batches: EventStandBatch[], eventSlug?
         width: dimensions?.width,
         length: dimensions?.length,
         area,
-        price: batch.price ?? (area ? area * 400 : undefined),
+        price: batch.price,
         status: "available",
-        type: batch.type.trim() || "Padrão"
+        type: batch.type.trim() || "Padrão",
+        batchId,
+        installments: batch.installments?.map((installment) => ({ ...installment }))
       };
     });
   });

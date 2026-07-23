@@ -32,6 +32,41 @@ class FakeStorage implements ContractStorage {
 }
 
 describe("ContractDocumentService", () => {
+  it("generates a sponsor-signed contract while the APCC signature is pending", async () => {
+    const storage = new FakeStorage();
+    const service = new ContractDocumentService(storage, new FakeCnpjClient());
+
+    const contract = await service.generateSponsorContract({
+      sponsor: {
+        documentType: "cpf",
+        document: "123.456.789-01",
+        legalName: "Maria Silva",
+        representativeName: "Maria Silva",
+        representativeRole: "Expositora",
+        representativeRg: "200200200",
+        representativeCpf: "123.456.789-01",
+        phone: "(85) 99999-0000",
+        email: "maria@example.com"
+      },
+      stand: {
+        code: "N-05",
+        size: "3x3",
+        area: 9
+      },
+      sponsorSignatureDataUrl: "data:image/png;base64,cGF0cm9jaW5hZG9y"
+    });
+
+    expect(contract.adminSignatureKey).toBeUndefined();
+    expect(contract.adminSignatureUrl).toBeUndefined();
+    expect(storage.uploads.map((upload) => upload.contentType)).toEqual([
+      "image/png",
+      "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+    ]);
+
+    const documentXml = await extractDocumentXml(storage.uploads[1].body);
+    expect(documentXml).toContain("Assinatura da APCC pendente");
+  });
+
   it("fills the shrimp festival contract with CNPJ data and stores contract plus signatures", async () => {
     const storage = new FakeStorage();
     const service = new ContractDocumentService(storage, new FakeCnpjClient());

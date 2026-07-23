@@ -58,7 +58,7 @@ export interface ContractRecord {
   contractUrl: string;
   sponsorSignatureKey: string;
   sponsorSignatureUrl: string;
-  adminSignatureKey: string;
-  adminSignatureUrl: string;
+  adminSignatureKey?: string;
+  adminSignatureUrl?: string;
   createdAt: string;
 }

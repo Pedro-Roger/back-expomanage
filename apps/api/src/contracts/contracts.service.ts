@@ -53,10 +53,6 @@ export class ContractDocumentService {
   }
 
   async generateSponsorContract(input: GenerateContractInput): Promise<ContractRecord> {
-    if (!this.adminSignature) {
-      throw new BadRequestException("Assinatura da APCC precisa ser cadastrada antes de gerar contratos.");
-    }
-
     const sponsor = await this.resolveSponsor(input.sponsor);
     const sponsorSignature = await this.storage.uploadObject({
       key: `contracts/signatures/sponsor-${Date.now()}.png`,
@@ -68,7 +64,7 @@ export class ContractDocumentService {
       standCode: input.stand.code,
       standSize: input.stand.size,
       sponsorSignatureUrl: sponsorSignature.url,
-      adminSignatureUrl: this.adminSignature.asset.url
+      adminSignatureUrl: this.adminSignature?.asset.url
     });
     const contractId = `contract-${Date.now()}-${slugify(input.stand.code)}`;
     const contractAsset = await this.storage.uploadObject({
@@ -84,8 +80,8 @@ export class ContractDocumentService {
       contractUrl: contractAsset.url,
       sponsorSignatureKey: sponsorSignature.key,
       sponsorSignatureUrl: sponsorSignature.url,
-      adminSignatureKey: this.adminSignature.asset.key,
-      adminSignatureUrl: this.adminSignature.asset.url,
+      adminSignatureKey: this.adminSignature?.asset.key,
+      adminSignatureUrl: this.adminSignature?.asset.url,
       createdAt: new Date().toISOString()
     };
 
@@ -130,7 +126,7 @@ export class ContractDocumentService {
     standCode: string;
     standSize: string;
     sponsorSignatureUrl: string;
-    adminSignatureUrl: string;
+    adminSignatureUrl?: string;
   }): Promise<Buffer> {
     const zip = await JSZip.loadAsync(readFileSync(contractTemplatePath));
     const document = zip.file("word/document.xml");
@@ -212,15 +208,16 @@ function escapeXml(value: string): string {
 
 function appendSignatureProof(
   xml: string,
-  input: { sponsorName: string; standCode: string; standSize: string; sponsorSignatureUrl: string; adminSignatureUrl: string }
+  input: { sponsorName: string; standCode: string; standSize: string; sponsorSignatureUrl: string; adminSignatureUrl?: string }
 ): string {
   const proof = [
     `Contrato gerado para estande ${input.standCode} (${input.standSize}).`,
     "Assinatura digital do PATROCINADOR:",
     `${input.sponsorName} - ${input.sponsorSignatureUrl}`,
-    "Assinatura digital da APCC:",
+    input.adminSignatureUrl ? "Assinatura digital da APCC:" : "Assinatura da APCC pendente",
     input.adminSignatureUrl
   ]
+    .filter((line): line is string => Boolean(line))
     .map((line) => `<w:p><w:r><w:t>${escapeXml(line)}</w:t></w:r></w:p>`)
     .join("");
 

@@ -70,7 +70,19 @@ export class PurchasesService {
   async downloadContract(purchaseId: string): Promise<{ body: Buffer; contentType: string; fileName: string }> {
     const purchase = await this.getRequiredPurchase(purchaseId);
     const key = extractS3KeyFromContractUrl(purchase.contractUrl);
-    const asset = await this.storage.downloadObject(key);
+    let asset: Awaited<ReturnType<ContractStorage["downloadObject"]>>;
+
+    try {
+      asset = await this.storage.downloadObject(key);
+    } catch (error) {
+      if (isMissingStorageObject(error)) {
+        throw new NotFoundException(
+          "Arquivo do contrato não encontrado. Assine o contrato novamente para gerar uma nova via."
+        );
+      }
+
+      throw error;
+    }
     const extension = key.split(".").pop() || "docx";
 
     return {
@@ -124,6 +136,14 @@ export class PurchasesService {
 
     return purchase;
   }
+}
+
+function isMissingStorageObject(error: unknown): boolean {
+  if (!(error instanceof Error)) {
+    return false;
+  }
+
+  return error.name === "NoSuchKey" || error.name === "NotFound" || error.message.includes("specified key does not exist");
 }
 
 function updateInstallment(

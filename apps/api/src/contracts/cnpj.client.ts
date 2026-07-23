@@ -3,6 +3,8 @@ import { getCnpjApiUrl } from "../config.js";
 import { ReceitaCnpjMongoRepository } from "../cnpj-open-data.repository.js";
 import type { CnpjCompanyData, CnpjLookupClient } from "./contracts.types.js";
 
+const defaultCnpjApiUrl = "https://api.opencnpj.org";
+
 @Injectable()
 export class HttpCnpjLookupClient implements CnpjLookupClient {
   private readonly openDataRepository = new ReceitaCnpjMongoRepository();
@@ -25,12 +27,8 @@ export class HttpCnpjLookupClient implements CnpjLookupClient {
     }
 
     const baseUrl = getCnpjApiUrl();
-
-    if (!baseUrl) {
-      throw new ServiceUnavailableException("CNPJ não encontrado na base importada da Receita.");
-    }
-
-    const response = await fetch(`${baseUrl.replace(/\/$/, "")}/${digits}`);
+    const lookupBaseUrl = baseUrl || defaultCnpjApiUrl;
+    const response = await fetch(`${lookupBaseUrl.replace(/\/$/, "")}/${digits}`);
 
     if (!response.ok) {
       throw new ServiceUnavailableException("Não foi possível consultar o CNPJ.");
@@ -39,8 +37,8 @@ export class HttpCnpjLookupClient implements CnpjLookupClient {
     const data = await response.json() as Record<string, unknown>;
 
     return {
-      cnpj,
-      legalName: String(data.razao_social ?? data.nome ?? data.legalName ?? ""),
+      cnpj: digits,
+      legalName: String(data.razao_social ?? data.nome_fantasia ?? data.nome ?? data.legalName ?? ""),
       address: formatCnpjAddress(data)
     };
   }

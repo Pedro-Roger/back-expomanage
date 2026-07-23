@@ -93,6 +93,33 @@ describe("shared stand helpers", () => {
     expect(stands[89].code).toBe("G-10");
   });
 
+  it("copies batch price and installments to every generated stand", () => {
+    const stands = generateStandsFromBatches([
+      {
+        id: "negocios",
+        quantity: 3,
+        size: "3x3",
+        type: "Feira de Negócios",
+        prefix: "N",
+        price: 4200,
+        installments: [
+          { label: "Entrada", amount: 1200, dueLabel: "Imediato" },
+          { label: "Saldo", amount: 3000, dueLabel: "Agosto/2026" }
+        ]
+      }
+    ]);
+
+    expect(stands).toHaveLength(3);
+    expect(stands[2]).toMatchObject({
+      batchId: "negocios",
+      price: 4200,
+      installments: [
+        { label: "Entrada", amount: 1200, dueLabel: "Imediato" },
+        { label: "Saldo", amount: 3000, dueLabel: "Agosto/2026" }
+      ]
+    });
+  });
+
   it("formats BRL currency", () => {
     expect(formatCurrency(482000)).toBe("R$ 482.000,00");
   });
@@ -119,6 +146,31 @@ describe("shared stand helpers", () => {
         label: "2ª parcela",
         amount: 2000,
         dueLabel: "Agosto/2026",
+        status: "waiting_receipt"
+      })
+    ]);
+  });
+
+  it("uses the selected stand installment plan in the purchase", () => {
+    const profile = buildPurchaseProfile({
+      clientName: "Maria Silva",
+      clientEmail: "maria@example.com",
+      stand: {
+        id: "stand-n-01",
+        code: "N-01",
+        size: "3x3",
+        status: "reserved",
+        installments: [{ label: "Única", amount: 4200, dueLabel: "Imediato" }]
+      },
+      contractUrl: "s3://contracts/contract-n-01.docx"
+    });
+
+    expect(profile.installments).toEqual([
+      expect.objectContaining({
+        id: "installment-1",
+        label: "Única",
+        amount: 4200,
+        dueLabel: "Imediato",
         status: "waiting_receipt"
       })
     ]);
