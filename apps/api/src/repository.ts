@@ -38,11 +38,22 @@ export interface ExpoRepository {
 
 @Injectable()
 export class InMemoryExpoRepository implements ExpoRepository {
-  private events: ExpoEvent[] = [structuredClone(defaultExpoEvent)];
-  private paymentConfigs: EventPaymentConfig[] = [defaultPaymentConfig(defaultExpoEvent.slug)];
-  private stands: Stand[] = structuredClone(sampleStands).map((stand) => ({ ...stand, eventSlug: defaultExpoEvent.slug }));
-  private leads: Lead[] = structuredClone(sampleLeads).map((lead) => ({ ...lead, eventSlug: defaultExpoEvent.slug }));
+  private events: ExpoEvent[];
+  private paymentConfigs: EventPaymentConfig[];
+  private stands: Stand[];
+  private leads: Lead[];
   private purchases: ClientPurchaseProfile[] = [];
+
+  constructor(seedDemoData = process.env.NODE_ENV === "test") {
+    this.events = seedDemoData ? [structuredClone(defaultExpoEvent)] : [];
+    this.paymentConfigs = seedDemoData ? [defaultPaymentConfig(defaultExpoEvent.slug)] : [];
+    this.stands = seedDemoData
+      ? structuredClone(sampleStands).map((stand) => ({ ...stand, eventSlug: defaultExpoEvent.slug }))
+      : [];
+    this.leads = seedDemoData
+      ? structuredClone(sampleLeads).map((lead) => ({ ...lead, eventSlug: defaultExpoEvent.slug }))
+      : [];
+  }
 
   async listEvents(): Promise<ExpoEvent[]> {
     return structuredClone(this.events);
