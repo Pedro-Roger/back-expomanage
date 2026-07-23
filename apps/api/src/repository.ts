@@ -17,6 +17,7 @@ export const EXPO_REPOSITORY = Symbol("EXPO_REPOSITORY");
 export interface ExpoRepository {
   listEvents(): Promise<ExpoEvent[]>;
   upsertEvent(event: ExpoEvent): Promise<ExpoEvent>;
+  deleteEvent(eventSlug: string): Promise<boolean>;
   getPaymentConfig(eventSlug: string): Promise<EventPaymentConfig>;
   upsertPaymentConfig(config: EventPaymentConfig): Promise<EventPaymentConfig>;
   listStands(eventSlug?: string): Promise<Stand[]>;
@@ -56,6 +57,16 @@ export class InMemoryExpoRepository implements ExpoRepository {
     };
     this.events = [saved, ...this.events.filter((current) => current.slug !== saved.slug)];
     return structuredClone(saved);
+  }
+
+  async deleteEvent(eventSlug: string): Promise<boolean> {
+    const existed = this.events.some((event) => event.slug === eventSlug);
+    this.events = this.events.filter((event) => event.slug !== eventSlug);
+    this.paymentConfigs = this.paymentConfigs.filter((config) => config.eventSlug !== eventSlug);
+    this.stands = this.stands.filter((stand) => (stand.eventSlug ?? defaultExpoEvent.slug) !== eventSlug);
+    this.leads = this.leads.filter((lead) => (lead.eventSlug ?? defaultExpoEvent.slug) !== eventSlug);
+    this.purchases = this.purchases.filter((purchase) => (purchase.eventSlug ?? defaultExpoEvent.slug) !== eventSlug);
+    return existed;
   }
 
   async getPaymentConfig(eventSlug: string): Promise<EventPaymentConfig> {

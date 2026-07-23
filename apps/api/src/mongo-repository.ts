@@ -59,6 +59,18 @@ export class MongoExpoRepository implements ExpoRepository, OnModuleDestroy {
     return stripMongoField(saved);
   }
 
+  async deleteEvent(eventSlug: string): Promise<boolean> {
+    await this.seedDefaults();
+    const eventDelete = await this.events().deleteOne({ slug: eventSlug });
+    await Promise.all([
+      this.stands().deleteMany(scopedEventQuery(eventSlug)),
+      this.leads().deleteMany(scopedEventQuery(eventSlug)),
+      this.purchases().deleteMany(scopedEventQuery(eventSlug)),
+      this.paymentConfigs().deleteMany({ eventSlug })
+    ]);
+    return eventDelete.deletedCount > 0;
+  }
+
   async getPaymentConfig(eventSlug: string): Promise<EventPaymentConfig> {
     await this.seedDefaults();
     const config = await this.paymentConfigs()
