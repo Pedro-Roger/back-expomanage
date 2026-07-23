@@ -40,12 +40,6 @@ export class EventsService {
     return this.stands.generateForEvent(eventSlug, batches);
   }
 
-  async delete(eventSlug: string): Promise<{ deleted: boolean; slug: string }> {
-    const slug = normalizeSlug(eventSlug);
-    const deleted = await this.repository.deleteEvent(slug);
-    return { deleted, slug };
-  }
-
   getPaymentConfig(eventSlug: string): Promise<EventPaymentConfig> {
     return this.repository.getPaymentConfig(eventSlug);
   }

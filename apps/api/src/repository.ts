@@ -17,7 +17,6 @@ export const EXPO_REPOSITORY = Symbol("EXPO_REPOSITORY");
 export interface ExpoRepository {
   listEvents(): Promise<ExpoEvent[]>;
   upsertEvent(event: ExpoEvent): Promise<ExpoEvent>;
-  deleteEvent(eventSlug: string): Promise<boolean>;
   getPaymentConfig(eventSlug: string): Promise<EventPaymentConfig>;
   upsertPaymentConfig(config: EventPaymentConfig): Promise<EventPaymentConfig>;
   listStands(eventSlug?: string): Promise<Stand[]>;
@@ -38,22 +37,11 @@ export interface ExpoRepository {
 
 @Injectable()
 export class InMemoryExpoRepository implements ExpoRepository {
-  private events: ExpoEvent[];
-  private paymentConfigs: EventPaymentConfig[];
-  private stands: Stand[];
-  private leads: Lead[];
+  private events: ExpoEvent[] = [structuredClone(defaultExpoEvent)];
+  private paymentConfigs: EventPaymentConfig[] = [defaultPaymentConfig(defaultExpoEvent.slug)];
+  private stands: Stand[] = structuredClone(sampleStands).map((stand) => ({ ...stand, eventSlug: defaultExpoEvent.slug }));
+  private leads: Lead[] = structuredClone(sampleLeads).map((lead) => ({ ...lead, eventSlug: defaultExpoEvent.slug }));
   private purchases: ClientPurchaseProfile[] = [];
-
-  constructor(seedDemoData = process.env.NODE_ENV === "test") {
-    this.events = seedDemoData ? [structuredClone(defaultExpoEvent)] : [];
-    this.paymentConfigs = seedDemoData ? [defaultPaymentConfig(defaultExpoEvent.slug)] : [];
-    this.stands = seedDemoData
-      ? structuredClone(sampleStands).map((stand) => ({ ...stand, eventSlug: defaultExpoEvent.slug }))
-      : [];
-    this.leads = seedDemoData
-      ? structuredClone(sampleLeads).map((lead) => ({ ...lead, eventSlug: defaultExpoEvent.slug }))
-      : [];
-  }
 
   async listEvents(): Promise<ExpoEvent[]> {
     return structuredClone(this.events);
@@ -68,16 +56,6 @@ export class InMemoryExpoRepository implements ExpoRepository {
     };
     this.events = [saved, ...this.events.filter((current) => current.slug !== saved.slug)];
     return structuredClone(saved);
-  }
-
-  async deleteEvent(eventSlug: string): Promise<boolean> {
-    const existed = this.events.some((event) => event.slug === eventSlug);
-    this.events = this.events.filter((event) => event.slug !== eventSlug);
-    this.paymentConfigs = this.paymentConfigs.filter((config) => config.eventSlug !== eventSlug);
-    this.stands = this.stands.filter((stand) => (stand.eventSlug ?? defaultExpoEvent.slug) !== eventSlug);
-    this.leads = this.leads.filter((lead) => (lead.eventSlug ?? defaultExpoEvent.slug) !== eventSlug);
-    this.purchases = this.purchases.filter((purchase) => (purchase.eventSlug ?? defaultExpoEvent.slug) !== eventSlug);
-    return existed;
   }
 
   async getPaymentConfig(eventSlug: string): Promise<EventPaymentConfig> {

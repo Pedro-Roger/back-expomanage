@@ -4,6 +4,8 @@ import {
   defaultExpoEvent,
   defaultPaymentInstallments,
   defaultPixCopyPaste,
+  sampleLeads,
+  sampleStands,
   type ClientPurchaseProfile,
   type EventPaymentConfig,
   type ExpoEvent,
@@ -34,7 +36,7 @@ export class MongoExpoRepository implements ExpoRepository, OnModuleDestroy {
   }
 
   async listEvents(): Promise<ExpoEvent[]> {
-    await this.connect();
+    await this.seedDefaults();
     return this.events().find().sort({ name: 1 }).lean<Stored<ExpoEvent>[]>().then(stripMongoFields);
   }
 
@@ -57,20 +59,8 @@ export class MongoExpoRepository implements ExpoRepository, OnModuleDestroy {
     return stripMongoField(saved);
   }
 
-  async deleteEvent(eventSlug: string): Promise<boolean> {
-    await this.connect();
-    const eventDelete = await this.events().deleteOne({ slug: eventSlug });
-    await Promise.all([
-      this.stands().deleteMany(scopedEventQuery(eventSlug)),
-      this.leads().deleteMany(scopedEventQuery(eventSlug)),
-      this.purchases().deleteMany(scopedEventQuery(eventSlug)),
-      this.paymentConfigs().deleteMany({ eventSlug })
-    ]);
-    return eventDelete.deletedCount > 0;
-  }
-
   async getPaymentConfig(eventSlug: string): Promise<EventPaymentConfig> {
-    await this.connect();
+    await this.seedDefaults();
     const config = await this.paymentConfigs()
       .findOne({ eventSlug })
       .lean<Stored<EventPaymentConfig> | null>();
@@ -94,7 +84,7 @@ export class MongoExpoRepository implements ExpoRepository, OnModuleDestroy {
   }
 
   async listStands(eventSlug = defaultExpoEvent.slug): Promise<Stand[]> {
-    await this.connect();
+    await this.seedDefaults();
     return this.stands()
       .find(scopedEventQuery(eventSlug))
       .sort({ code: 1 })
@@ -103,13 +93,13 @@ export class MongoExpoRepository implements ExpoRepository, OnModuleDestroy {
   }
 
   async getStandById(id: string): Promise<Stand | undefined> {
-    await this.connect();
+    await this.seedDefaults();
     const stand = await this.stands().findOne({ id }).lean<Stored<Stand> | null>();
     return stand ? stripMongoField(stand) : undefined;
   }
 
   async updateStand(stand: Stand): Promise<Stand> {
-    await this.connect();
+    await this.seedDefaults();
     const updated = await this.stands().findOneAndUpdate(
       { id: stand.id },
       { $set: stand },
@@ -119,7 +109,7 @@ export class MongoExpoRepository implements ExpoRepository, OnModuleDestroy {
   }
 
   async replaceEventStands(eventSlug: string, stands: Stand[]): Promise<Stand[]> {
-    await this.connect();
+    await this.seedDefaults();
     await this.stands().deleteMany(scopedEventQuery(eventSlug));
 
     if (stands.length === 0) {
@@ -132,7 +122,7 @@ export class MongoExpoRepository implements ExpoRepository, OnModuleDestroy {
   }
 
   async listLeads(eventSlug = defaultExpoEvent.slug): Promise<Lead[]> {
-    await this.connect();
+    await this.seedDefaults();
     return this.leads()
       .find(scopedEventQuery(eventSlug))
       .sort({ createdAt: -1 })
@@ -141,13 +131,13 @@ export class MongoExpoRepository implements ExpoRepository, OnModuleDestroy {
   }
 
   async getLeadById(id: string): Promise<Lead | undefined> {
-    await this.connect();
+    await this.seedDefaults();
     const lead = await this.leads().findOne({ id }).lean<Stored<Lead> | null>();
     return lead ? stripMongoField(lead) : undefined;
   }
 
   async addLead(lead: Lead): Promise<Lead> {
-    await this.connect();
+    await this.seedDefaults();
     const saved = await this.leads().findOneAndUpdate(
       { id: lead.id },
       { $set: lead },
@@ -204,6 +194,33 @@ export class MongoExpoRepository implements ExpoRepository, OnModuleDestroy {
 
   async updatePurchase(purchase: ClientPurchaseProfile): Promise<ClientPurchaseProfile> {
     return this.addPurchase(purchase);
+  }
+
+  private async seedDefaults() {
+    await this.connect();
+
+    const [eventsCount, standsCount, leadsCount, paymentConfigsCount] = await Promise.all([
+      this.events().estimatedDocumentCount(),
+      this.stands().estimatedDocumentCount(),
+      this.leads().estimatedDocumentCount(),
+      this.paymentConfigs().estimatedDocumentCount()
+    ]);
+
+    if (eventsCount === 0) {
+      await this.events().insertMany([defaultExpoEvent]);
+    }
+
+    if (standsCount === 0) {
+      await this.stands().insertMany(sampleStands.map((stand) => ({ ...stand, eventSlug: defaultExpoEvent.slug })));
+    }
+
+    if (leadsCount === 0) {
+      await this.leads().insertMany(sampleLeads.map((lead) => ({ ...lead, eventSlug: defaultExpoEvent.slug })));
+    }
+
+    if (paymentConfigsCount === 0) {
+      await this.paymentConfigs().insertMany([defaultPaymentConfig(defaultExpoEvent.slug)]);
+    }
   }
 
   private async connect() {

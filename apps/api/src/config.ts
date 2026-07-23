@@ -39,11 +39,11 @@ export function getJwtSecret(): string {
 }
 
 export function getAdminEmail(): string {
-  return process.env.ADMIN_EMAIL ?? (process.env.NODE_ENV === "test" ? "admin@expomanage.local" : "");
+  return process.env.ADMIN_EMAIL ?? "admin@expomanage.local";
 }
 
 export function getAdminPassword(): string {
-  return process.env.ADMIN_PASSWORD ?? (process.env.NODE_ENV === "test" ? "admin123" : "");
+  return process.env.ADMIN_PASSWORD ?? "admin123";
 }
 
 export function getAdminName(): string {

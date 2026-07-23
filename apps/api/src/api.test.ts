@@ -249,65 +249,6 @@ describe("ExpoManage API domain", () => {
 
     await app.close();
   });
-
-  it("deletes an event and its scoped admin data through the HTTP API", async () => {
-    const moduleRef = await Test.createTestingModule({
-      imports: [AppModule]
-    }).compile();
-    const app = moduleRef.createNestApplication();
-    await app.init();
-
-    const login = await request(app.getHttpServer())
-      .post("/auth/login")
-      .send({ email: "admin@expomanage.local", password: "admin123" })
-      .expect(201);
-    const authHeader = `Bearer ${login.body.token}`;
-
-    await request(app.getHttpServer())
-      .post("/events")
-      .set("Authorization", authHeader)
-      .send({ name: "Evento Temporário 2027", slug: "evento-temporario-2027" })
-      .expect(201);
-
-    await request(app.getHttpServer())
-      .post("/events/evento-temporario-2027/stands/generate")
-      .set("Authorization", authHeader)
-      .send({ batches: [{ quantity: 2, size: "3x3", type: "Teste", prefix: "T" }] })
-      .expect(201);
-
-    await request(app.getHttpServer())
-      .post("/events/evento-temporario-2027/payment-config")
-      .set("Authorization", authHeader)
-      .send({ pixCopyPaste: "PIX-TEMPORARIO", installments: [] })
-      .expect(201);
-
-    await request(app.getHttpServer())
-      .delete("/events/evento-temporario-2027")
-      .set("Authorization", authHeader)
-      .expect(200)
-      .expect((response) => {
-        expect(response.body).toMatchObject({ deleted: true, slug: "evento-temporario-2027" });
-      });
-
-    await request(app.getHttpServer())
-      .get("/events")
-      .set("Authorization", authHeader)
-      .expect(200)
-      .expect((response) => {
-        expect(response.body).not.toEqual(expect.arrayContaining([
-          expect.objectContaining({ slug: "evento-temporario-2027" })
-        ]));
-      });
-
-    await request(app.getHttpServer())
-      .get("/stands?eventSlug=evento-temporario-2027")
-      .expect(200)
-      .expect((response) => {
-        expect(response.body).toEqual([]);
-      });
-
-    await app.close();
-  });
 });
 
 function hashTestPassword(password: string): string {

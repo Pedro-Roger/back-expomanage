@@ -1,4 +1,4 @@
-import { Body, Controller, Delete, Get, Inject, Param, Post, UseGuards } from "@nestjs/common";
+import { Body, Controller, Get, Inject, Param, Post, UseGuards } from "@nestjs/common";
 import { type EventPaymentConfig, type EventStandBatch } from "@expomanage/shared";
 import { JwtAuthGuard } from "../auth/jwt-auth.guard.js";
 import { EventsService } from "./events.service.js";
@@ -17,12 +17,6 @@ export class EventsController {
   @UseGuards(JwtAuthGuard)
   upsert(@Body() input: { name?: string; slug?: string; year?: number }) {
     return this.events.upsert(input);
-  }
-
-  @Delete(":slug")
-  @UseGuards(JwtAuthGuard)
-  delete(@Param("slug") slug: string) {
-    return this.events.delete(slug);
   }
 
   @Post(":slug/stands/generate")
